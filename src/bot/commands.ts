@@ -1,4 +1,7 @@
 import { bot } from "./index";
+import { addWallet } from "../services/walletService";
+
+// addWallet(wallet);
 
 const users = new Map<number, any>(); // temporary memory (DB later)
 
