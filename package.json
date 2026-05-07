@@ -21,7 +21,8 @@
   "dependencies": {
     "axios": "^1.16.0",
     "dotenv": "^17.4.2",
-    "node-telegram-bot-api": "^0.67.0",
+    "ethers": "^6.16.0",
+    "node-telegram-bot-api": "^0.63.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.3"
   },
