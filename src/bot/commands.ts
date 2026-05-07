@@ -1,12 +1,9 @@
 import { bot } from "./index";
 import { addWallet } from "../services/walletService";
 
-// addWallet(wallet);
-
 const users = new Map<number, any>(); // temporary memory (DB later)
 
 export function registerCommands() {
-  
   // /start
   bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
@@ -16,10 +13,7 @@ export function registerCommands() {
       wallets: [],
     });
 
-    bot.sendMessage(
-      chatId,
-      "Wallet Alert Bot is active.\nUse /track <wallet>"
-    );
+    bot.sendMessage(chatId, "Wallet Alert Bot is active.\nUse /track <wallet>");
   });
 
   // /track wallet
@@ -36,10 +30,10 @@ export function registerCommands() {
 
     users.set(chatId, user);
 
-    bot.sendMessage(
-      chatId,
-      `Tracking wallet:\n${wallet}`
-    );
+    // add to global tracking registry
+    addWallet(wallet);
+
+    bot.sendMessage(chatId, `Tracking wallet:\n${wallet}`);
   });
 
   console.log("Commands registered");
