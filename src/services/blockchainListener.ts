@@ -2,6 +2,8 @@ import { ethers } from "ethers";
 import { isTracked, getChatIdsForWallet } from "./walletService";
 import { sendAlert } from "./alertService";
 
+const EXPLORER_BASE = process.env.EXPLORER_BASE || "https://sepolia.etherscan.io/tx/";
+
 function shortAddress(addr: string) {
   if (!addr) return "";
   if (addr.length <= 12) return addr;
@@ -10,8 +12,7 @@ function shortAddress(addr: string) {
 
 function formatEth(value?: ethers.BigNumberish) {
   try {
-    const v = ethers.BigNumber.isBigNumber(value) ? value : ethers.BigNumber.from(value || 0);
-    const s = ethers.utils.formatEther(v);
+    const s = ethers.formatEther(value || 0);
     // trim to max 6 decimal places and remove trailing zeros
     const n = parseFloat(s);
     if (n === 0) return "0";
@@ -27,8 +28,6 @@ export function startListener() {
     console.error("ALCHEMY_WS not set");
     return;
   }
-
-  const explorerBase = process.env.EXPLORER_BASE || "https://sepolia.etherscan.io/tx/";
 
   const provider = new ethers.WebSocketProvider(wsUrl);
 
@@ -51,51 +50,60 @@ export function startListener() {
 
         if (!tx) continue;
 
-        const from = tx.from || "";
-        const to = tx.to || "";
-
-        console.log("TX:", tx.hash);
-
-        // if tracked as sender -> outgoing
-        if (from && isTracked(from)) {
-          console.log("MATCH FROM:", from);
-
-          const chatIds = getChatIdsForWallet(from);
-
-          const amount = formatEth(tx.value);
-          const direction = "🟢 OUTGOING TRANSACTION";
-          const trackedWallet = from;
-
-          const toDisplay = to || "(contract)";
-
-          const message = `${direction}\n\nWallet:\n${shortAddress(trackedWallet)}\n\nAmount:\n${amount} ETH\n\nTo:\n${shortAddress(toDisplay)}\n\nTx:\n${explorerBase}${tx.hash}`;
-
-          chatIds.forEach((chatId) => {
-            sendAlert(chatId, message);
-          });
-        }
-
-        // if tracked as receiver -> incoming
-        if (to && isTracked(to)) {
-          console.log("MATCH TO:", to);
-
-          const chatIds = getChatIdsForWallet(to);
-
-          const amount = formatEth(tx.value);
-          const direction = "🔴 INCOMING TRANSACTION";
-          const trackedWallet = to;
-
-          const fromDisplay = from || "(contract)";
-
-          const message = `${direction}\n\nWallet:\n${shortAddress(trackedWallet)}\n\nAmount:\n${amount} ETH\n\nFrom:\n${shortAddress(fromDisplay)}\n\nTx:\n${explorerBase}${tx.hash}`;
-
-          chatIds.forEach((chatId) => {
-            sendAlert(chatId, message);
-          });
-        }
+        await handleTx(tx);
       }
     } catch (err) {
       console.error("Block processing error:", err);
     }
   });
+}
+
+async function handleTx(tx: any) {
+  const from = tx.from || "";
+  const to = tx.to || "";
+
+  console.log("TX:", tx.hash);
+
+  if (from && isTracked(from)) {
+    console.log("MATCH FROM:", from);
+
+    const chatIds = getChatIdsForWallet(from);
+
+    const amount = formatEth(tx.value);
+    const direction = "🟢 OUTGOING TRANSACTION";
+    const trackedWallet = from;
+
+    const toDisplay = to || "(contract)";
+
+    const message = `${direction}\n\nWallet:\n${shortAddress(trackedWallet)}\n\nAmount:\n${amount} ETH\n\nTo:\n${shortAddress(toDisplay)}\n\nTx:\n${EXPLORER_BASE}${tx.hash}`;
+
+    chatIds.forEach((chatId) => sendAlert(chatId, message));
+  }
+
+  if (to && isTracked(to)) {
+    console.log("MATCH TO:", to);
+
+    const chatIds = getChatIdsForWallet(to);
+
+    const amount = formatEth(tx.value);
+    const direction = "🔴 INCOMING TRANSACTION";
+    const trackedWallet = to;
+
+    const fromDisplay = from || "(contract)";
+
+    const message = `${direction}\n\nWallet:\n${shortAddress(trackedWallet)}\n\nAmount:\n${amount} ETH\n\nFrom:\n${shortAddress(fromDisplay)}\n\nTx:\n${EXPLORER_BASE}${tx.hash}`;
+
+    chatIds.forEach((chatId) => sendAlert(chatId, message));
+  }
+}
+
+export async function processTransaction(txHash: string) {
+  const wsUrl = process.env.ALCHEMY_WS;
+  if (!wsUrl) {
+    throw new Error("ALCHEMY_WS not set");
+  }
+  const provider = new ethers.WebSocketProvider(wsUrl);
+  const tx = await provider.getTransaction(txHash);
+  if (!tx) throw new Error("Transaction not found: " + txHash);
+  await handleTx(tx);
 }
