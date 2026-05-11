@@ -2,7 +2,8 @@ import { ethers } from "ethers";
 import { isTracked, getChatIdsForWallet } from "./walletService";
 import { sendAlert } from "./alertService";
 
-const EXPLORER_BASE = process.env.EXPLORER_BASE || "https://sepolia.etherscan.io/tx/";
+const EXPLORER_BASE =
+  process.env.EXPLORER_BASE || "https://sepolia.etherscan.io/tx/";
 
 function shortAddress(addr: string) {
   if (!addr) return "";
@@ -24,14 +25,23 @@ function formatEth(value?: ethers.BigNumberish) {
 
 export function startListener() {
   const wsUrl = process.env.ALCHEMY_WS;
-  if (!wsUrl) {
+
+  const provider = wsUrl ? new ethers.WebSocketProvider(wsUrl) : null;
+
+  if (!provider) {
     console.error("ALCHEMY_WS not set");
     return;
   }
 
-  const provider = new ethers.WebSocketProvider(wsUrl);
-
   console.log("Blockchain listener running...");
+
+  provider.on("error", (err) => {
+    console.error("WebSocket error:", err);
+  });
+
+  provider.on("close", () => {
+    console.error("WebSocket closed.");
+  });
 
   provider.on("block", async (blockNumber) => {
     console.log("New block:", blockNumber);
