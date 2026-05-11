@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  chatId    BigInt   @unique
+  wallets   Wallet[]
+  createdAt DateTime @default(now())
+}
+
+model Wallet {
+  id        Int      @id @default(autoincrement())
+  address   String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([address, userId])
+}
