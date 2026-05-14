@@ -4,7 +4,7 @@ import {
   getWalletsForChat,
   removeWallet,
 } from "../services/walletService";
-import { ethers } from "ethers";
+import { isAddress } from "ethers";
 
 const users = new Map<number, any>(); // temporary memory (DB later)
 
@@ -68,8 +68,8 @@ export function registerCommands() {
     }
 
     // validate wallet
-    if (!ethers.isAddress(wallet)) {
-      return bot.sendMessage(chatId, "Invalid Ethereum wallet address.");
+    if (!isAddress(wallet)) {
+      return bot.sendMessage(chatId, "Invalid BaseMainnet wallet address.");
     }
 
     const result = addWallet(chatId, wallet);
