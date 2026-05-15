@@ -2,12 +2,13 @@ import { ethers } from "ethers";
 import { isTracked, getChatIdsForWallet } from "./walletService";
 import { sendAlert } from "./alertService";
 import { parseERC20Transfers } from "./tokenService";
+import { env } from "../config/env";
 
-const wsUrl = process.env.ALCHEMY_WS || "";
+const wsUrl = env.ALCHEMY_WS;
 
 const provider = wsUrl ? new ethers.WebSocketProvider(wsUrl) : null;
 
-const EXPLORER_BASE = process.env.EXPLORER_BASE || "https://basescan.org/tx/";
+const EXPLORER_BASE = env.EXPLORER_BASE;
 
 const KNOWN_SELECTORS: Record<string, string> = {
   "0xa9059cbb": "transfer",
@@ -421,7 +422,7 @@ async function handleTx(tx: any) {
 }
 
 export async function processTransaction(txHash: string) {
-  const wsUrl = process.env.ALCHEMY_WS;
+  const wsUrl = env.ALCHEMY_WS;
   if (!wsUrl) {
     throw new Error("ALCHEMY_WS not set");
   }
