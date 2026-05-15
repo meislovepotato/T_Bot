@@ -108,7 +108,7 @@ async function getTokenMetadata(
     ERC20_ABI,
     provider,
   ) as any;
-  
+
   const decimals = await (tokenContract as any).decimals().catch(() => 18);
 
   const symbol = await (tokenContract as any)
@@ -196,40 +196,20 @@ export function startListener() {
       for (const txRaw of block.transactions) {
         let tx: any;
 
-        // if txRaw is a hash string, fetch the full transaction (with rate-limit protection)
         if (typeof txRaw === "string") {
           try {
             tx = await fetchTransactionWithRetry(txRaw);
+
             if (!tx) continue;
           } catch (err) {
             console.error("Failed to fetch transaction:", err);
             continue;
           }
         } else {
-          tx = txRaw as any;
+          tx = txRaw;
         }
 
-        // Always process the transaction so token transfers in receipts are detected
-        // even when `from`/`to` are contract addresses.
-        await Promise.all(
-          block.transactions.map(async (txRaw) => {
-            let tx: any;
-
-            if (typeof txRaw === "string") {
-              try {
-                tx = await fetchTransactionWithRetry(txRaw);
-                if (!tx) return;
-              } catch (err) {
-                console.error("Failed to fetch transaction:", err);
-                return;
-              }
-            } else {
-              tx = txRaw;
-            }
-
-            await handleTx(tx);
-          }),
-        );
+        await handleTx(tx);
       }
     } catch (err) {
       console.error("Block processing error:", err);
@@ -324,7 +304,7 @@ async function handleTx(tx: any) {
 
   const category = classifyAction(decodedAction || action || "");
 
-  if (from && await isTracked(from)) {
+  if (from && (await isTracked(from))) {
     console.log("MATCH FROM:", from);
 
     const chatIds = await getChatIdsForWallet(from);
@@ -431,7 +411,7 @@ async function handleTx(tx: any) {
     chatIds.forEach((chatId: number) => sendAlert(chatId, message));
   }
 
-  if (to && await isTracked(to)) {
+  if (to && (await isTracked(to))) {
     console.log("MATCH TO:", to);
 
     const chatIds = await getChatIdsForWallet(to);
