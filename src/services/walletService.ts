@@ -1,32 +1,57 @@
-const trackedWallets: Map<string, Set<number>> = new Map();
+import { prisma } from "../lib/prisma";
 
 const MAX_WALLETS_PER_USER = 10;
 
-export function addWallet(chatId: number, wallet: string) {
+export async function addWallet(chatId: number, wallet: string) {
   const key = wallet.toLowerCase();
 
-  const userWallets = getWalletsForChat(chatId);
+  // find user
+  let user = await prisma.user.findUnique({
+    where: {
+      chatId: BigInt(chatId),
+    },
+    include: {
+      wallets: true,
+    },
+  });
 
-  // limit wallets per user
-  if (userWallets.length >= MAX_WALLETS_PER_USER) {
+  // create user if not exists
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        chatId: BigInt(chatId),
+      },
+      include: {
+        wallets: true,
+      },
+    });
+  }
+
+  // wallet limit
+  if (user.wallets.length >= MAX_WALLETS_PER_USER) {
     return {
       success: false,
       message: `You can only track up to ${MAX_WALLETS_PER_USER} wallets.`,
     };
   }
 
-  // prevent duplicates
-  if (userWallets.includes(key)) {
+  // duplicate check
+  const existing = user.wallets.find((w: { address: string }) => w.address.toLowerCase() === key);
+
+  if (existing) {
     return {
       success: false,
       message: "Wallet is already being tracked.",
     };
   }
-  const set = trackedWallets.get(key) || new Set<number>();
 
-  set.add(chatId);
-
-  trackedWallets.set(key, set);
+  // create wallet
+  await prisma.wallet.create({
+    data: {
+      address: key,
+      userId: user.id,
+    },
+  });
 
   console.log(`Tracking wallet ${key} for chat ${chatId}`);
 
@@ -36,24 +61,41 @@ export function addWallet(chatId: number, wallet: string) {
   };
 }
 
-export function removeWallet(chatId: number, wallet: string) {
+export async function removeWallet(chatId: number, wallet: string) {
   const key = wallet.toLowerCase();
 
-  const set = trackedWallets.get(key);
+  const user = await prisma.user.findUnique({
+    where: {
+      chatId: BigInt(chatId),
+    },
+  });
 
-  if (!set || !set.has(chatId)) {
+  if (!user) {
+    return {
+      success: false,
+      message: "User not found.",
+    };
+  }
+
+  const existing = await prisma.wallet.findFirst({
+    where: {
+      address: key,
+      userId: user.id,
+    },
+  });
+
+  if (!existing) {
     return {
       success: false,
       message: "Wallet is not being tracked.",
     };
   }
 
-  set.delete(chatId);
-
-  // cleanup empty sets
-  if (set.size === 0) {
-    trackedWallets.delete(key);
-  }
+  await prisma.wallet.delete({
+    where: {
+      id: existing.id,
+    },
+  });
 
   console.log(`Removed wallet ${key} for chat ${chatId}`);
 
@@ -63,23 +105,46 @@ export function removeWallet(chatId: number, wallet: string) {
   };
 }
 
+export async function getWallets() {
+  const wallets = await prisma.wallet.findMany();
 
-export function getWallets() {
-  return Array.from(trackedWallets.keys());
+  return wallets.map((w: { address: string }) => w.address);
 }
 
-export function getChatIdsForWallet(wallet: string) {
-  return Array.from(trackedWallets.get(wallet.toLowerCase()) || []);
+export async function getChatIdsForWallet(wallet: string) {
+  const rows = await prisma.wallet.findMany({
+    where: {
+      address: wallet.toLowerCase(),
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  return rows.map((r: { user: { chatId: bigint } }) => Number(r.user.chatId));
 }
 
-export function getWalletsForChat(chatId: number) {
-  const wallets: string[] = [];
-  for (const [wallet, set] of trackedWallets.entries()) {
-    if (set.has(chatId)) wallets.push(wallet);
-  }
-  return wallets;
+export async function getWalletsForChat(chatId: number) {
+  const user = await prisma.user.findUnique({
+    where: {
+      chatId: BigInt(chatId),
+    },
+    include: {
+      wallets: true,
+    },
+  });
+
+  if (!user) return [];
+
+  return user.wallets.map((w: { address: string }) => w.address);
 }
 
-export function isTracked(wallet: string) {
-  return trackedWallets.has(wallet.toLowerCase());
+export async function isTracked(wallet: string) {
+  const count = await prisma.wallet.count({
+    where: {
+      address: wallet.toLowerCase(),
+    },
+  });
+
+  return count > 0;
 }

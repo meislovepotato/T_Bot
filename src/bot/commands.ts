@@ -42,7 +42,7 @@ export function registerCommands() {
   });
 
   // /track wallet
-  bot.onText(/\/track (.+)/, (msg, match) => {
+  bot.onText(/\/track (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
 
     if (isOnCooldown(chatId)) {
@@ -72,21 +72,13 @@ export function registerCommands() {
       return bot.sendMessage(chatId, "Invalid BaseMainnet wallet address.");
     }
 
-    const result = addWallet(chatId, wallet);
+    const result = await addWallet(chatId, wallet);
 
     if (!result.success) {
       return bot.sendMessage(chatId, result.message);
     }
 
-    // const user = users.get(chatId) || { chatId, wallets: [] };
-    // user.wallets.push(wallet);
-
-    // users.set(chatId, user);
-
-    // // add to global tracking registry for this chat
-    // addWallet(chatId, wallet);
-
-    const tracked = getWalletsForChat(chatId);
+    const tracked = await getWalletsForChat(chatId);
 
     bot.sendMessage(
       chatId,
@@ -95,7 +87,7 @@ export function registerCommands() {
   });
 
   // /untrack wallet
-  bot.onText(/\/untrack (.+)/, (msg, match) => {
+  bot.onText(/\/untrack (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
 
     let wallet = match?.[1];
@@ -110,13 +102,13 @@ export function registerCommands() {
       wallet = `0x${wallet}`;
     }
 
-    const result = removeWallet(chatId, wallet);
+    const result = await removeWallet(chatId, wallet);
 
     if (!result.success) {
       return bot.sendMessage(chatId, result.message);
     }
 
-    const tracked = getWalletsForChat(chatId);
+    const tracked = await getWalletsForChat(chatId);
 
     bot.sendMessage(
       chatId,
@@ -125,9 +117,9 @@ export function registerCommands() {
   });
 
   // /list - show wallets this chat is tracking
-  bot.onText(/\/list/, (msg) => {
+  bot.onText(/\/list/, async (msg) => {
     const chatId = msg.chat.id;
-    const tracked = getWalletsForChat(chatId);
+    const tracked = await getWalletsForChat(chatId);
     bot.sendMessage(
       chatId,
       `Your tracked wallets:\n\n${tracked.join("\n") || "(none)"}`,

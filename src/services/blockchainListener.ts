@@ -324,10 +324,10 @@ async function handleTx(tx: any) {
 
   const category = classifyAction(decodedAction || action || "");
 
-  if (from && isTracked(from)) {
+  if (from && await isTracked(from)) {
     console.log("MATCH FROM:", from);
 
-    const chatIds = getChatIdsForWallet(from);
+    const chatIds = await getChatIdsForWallet(from);
 
     const amount = formatEth(tx.value);
     const direction = category;
@@ -428,13 +428,13 @@ async function handleTx(tx: any) {
     lines.push(`Tx:\n${EXPLORER_BASE}${tx.hash}`);
 
     const message = lines.join("\n");
-    chatIds.forEach((chatId) => sendAlert(chatId, message));
+    chatIds.forEach((chatId: number) => sendAlert(chatId, message));
   }
 
-  if (to && isTracked(to)) {
+  if (to && await isTracked(to)) {
     console.log("MATCH TO:", to);
 
-    const chatIds = getChatIdsForWallet(to);
+    const chatIds = await getChatIdsForWallet(to);
 
     const amount = formatEth(tx.value);
     const direction = "🔴 INCOMING TRANSACTION";
@@ -448,7 +448,7 @@ async function handleTx(tx: any) {
       `\n\nAction:\n${decodedAction}\n\nTx:`,
     );
 
-    chatIds.forEach((chatId) => sendAlert(chatId, messageWithAction));
+    chatIds.forEach((chatId: number) => sendAlert(chatId, messageWithAction));
   }
 
   // Token transfers already included in summaries above; skip separate alerts to avoid duplication.
