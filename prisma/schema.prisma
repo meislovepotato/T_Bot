@@ -17,10 +17,12 @@ model User {
 model Wallet {
   id        Int      @id @default(autoincrement())
   address   String
-  userId    Int
+
+  userId    Int       
   user      User     @relation(fields: [userId], references: [id])
 
   createdAt DateTime @default(now())
 
   @@unique([address, userId])
+  @@index([address])
 }
