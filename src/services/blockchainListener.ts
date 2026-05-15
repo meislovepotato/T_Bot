@@ -224,24 +224,10 @@ async function handleTx(tx: any) {
   console.log("TX:", tx.hash);
 
   const selector = tx.data && tx.data.length >= 10 ? tx.data.slice(0, 10) : "";
-  async function resolveSelector(sig: string) {
+  function resolveSelector(sig: string) {
     if (!sig) return "(none)";
-    if (KNOWN_SELECTORS[sig]) return KNOWN_SELECTORS[sig];
 
-    try {
-      const res = await (globalThis as any).fetch(
-        `https://www.4byte.directory/api/v1/signatures/?hex_signature=${sig}`,
-      );
-      if (!res || !res.ok) return sig;
-      const data = await res.json();
-      if (data && Array.isArray(data.results) && data.results.length > 0) {
-        return data.results[0].text_signature || sig;
-      }
-    } catch (e) {
-      // ignore lookup errors and return raw selector
-    }
-
-    return sig;
+    return KNOWN_SELECTORS[sig] || sig;
   }
 
   let action = await resolveSelector(selector);
