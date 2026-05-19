@@ -7,7 +7,7 @@
     "check-tx": "ts-node -r dotenv/config src/scripts/checkTx.ts",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/index.js"
   },
   "repository": {
