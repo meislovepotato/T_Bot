@@ -126,96 +126,33 @@ async function getTokenMetadata(
   return meta;
 }
 
-export function startListener() {
+export async function startListener() {
   if (!provider) {
     console.error("ALCHEMY_WS not set");
     return;
   }
 
   console.log("Blockchain listener running...");
-  const wsProvider = provider; // capture non-null provider for async use
 
-  wsProvider.on("block", async (blockNumber) => {
-    console.log("New block:", blockNumber);
-
+  provider.on("pending", async (txHash) => {
     try {
-      const block = await wsProvider.getBlock(blockNumber);
+      const tx = await provider.getTransaction(txHash);
 
-      if (!block || !block.transactions) return;
+      if (!tx) return;
 
-      // limit concurrent RPC calls to avoid hitting provider throughput limits
-      const MAX_CONCURRENT_FETCH =
-        Number(process.env.MAX_CONCURRENT_FETCH) || 5;
-      let currentFetches = 0;
-      const fetchQueue: (() => void)[] = [];
+      const from = tx.from?.toLowerCase();
+      const to = tx.to?.toLowerCase();
 
-      const acquire = () =>
-        new Promise<void>((resolve) => {
-          if (currentFetches < MAX_CONCURRENT_FETCH) {
-            currentFetches++;
-            resolve();
-            return;
-          }
-          fetchQueue.push(() => {
-            currentFetches++;
-            resolve();
-          });
-        });
+      if (!from && !to) return;
 
-      const release = () => {
-        currentFetches = Math.max(0, currentFetches - 1);
-        const next = fetchQueue.shift();
-        if (next) next();
-      };
+      const trackedFrom = from && (await isTracked(from));
+      const trackedTo = to && (await isTracked(to));
 
-      async function fetchTransactionWithRetry(hash: string) {
-        const MAX_RETRIES = 3;
-        let attempt = 0;
-        let lastErr: any = null;
+      if (!trackedFrom && !trackedTo) return;
 
-        while (attempt < MAX_RETRIES) {
-          attempt++;
-          try {
-            await acquire();
-            const tx = await wsProvider.getTransaction(hash);
-            release();
-            return tx;
-          } catch (err) {
-            release();
-            lastErr = err;
-            const waitMs = 500 * Math.pow(2, attempt - 1);
-            console.warn(
-              `getTransaction attempt ${attempt} failed, retrying in ${waitMs}ms`,
-            );
-            await new Promise((r) => setTimeout(r, waitMs));
-          }
-        }
-
-        throw lastErr;
-      }
-
-      for (const txRaw of block.transactions) {
-        await new Promise((r) => setTimeout(r, 50));
-
-        let tx: any;
-
-        if (typeof txRaw === "string") {
-          try {
-            tx = await fetchTransactionWithRetry(txRaw);
-
-            if (!tx) continue;
-          } catch (err) {
-            console.error("Failed to fetch transaction:", err);
-            continue;
-          }
-        } else {
-          tx = txRaw;
-        }
-
-        await handleTx(tx);
-      }
+      await handleTx(tx);
     } catch (err) {
-      console.error("Block processing error:", err);
+      console.error("Pending tx error:", err);
     }
   });
 }
