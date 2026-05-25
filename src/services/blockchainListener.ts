@@ -139,7 +139,7 @@ export function startListener() {
     console.log("New block:", blockNumber);
 
     try {
-      const block = await wsProvider.getBlock(blockNumber, true);
+      const block = await wsProvider.getBlock(blockNumber);
 
       if (!block || !block.transactions) return;
 
@@ -195,6 +195,8 @@ export function startListener() {
       }
 
       for (const txRaw of block.transactions) {
+        await new Promise((r) => setTimeout(r, 50));
+
         let tx: any;
 
         if (typeof txRaw === "string") {
@@ -426,7 +428,9 @@ export async function processTransaction(txHash: string) {
   if (!wsUrl) {
     throw new Error("ALCHEMY_WS not set");
   }
-  const provider = new ethers.WebSocketProvider(wsUrl);
+  const provider = new ethers.WebSocketProvider(wsUrl, undefined, {
+    polling: false,
+  });
   const tx = await provider.getTransaction(txHash);
   if (!tx) throw new Error("Transaction not found: " + txHash);
   await handleTx(tx);
