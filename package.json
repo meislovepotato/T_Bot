@@ -27,12 +27,14 @@
     "axios": "^1.16.1",
     "dotenv": "^17.4.2",
     "ethers": "^6.16.0",
+    "express": "^5.2.1",
     "node-telegram-bot-api": "^0.67.0",
     "prisma": "^5.22.0",
     "ts-node-dev": "^2.0.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^20.10.0",
     "@types/node-telegram-bot-api": "^0.64.14",
     "ts-node": "^10.9.2",
